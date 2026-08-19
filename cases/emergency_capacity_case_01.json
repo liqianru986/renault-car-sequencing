@@ -1,0 +1,41 @@
+{
+  "name": "emergency_capacity_case_01",
+  "instance_path": "../../Instances_set_X/Instances_set_X/028_CH2_EP_ENP_RAF_S51_J1",
+  "current_position": 15,
+  "freeze_length": 10,
+  "time_limit_sec": 10,
+  "seed": 42,
+  "emergency_orders": [
+    {
+      "ident": "URGENT_001",
+      "production_date": "dynamic_day_D",
+      "original_rank": 10001,
+      "paint_color": "5",
+      "option_flags": [true, false, false, false, true, false]
+    },
+    {
+      "ident": "URGENT_002",
+      "production_date": "dynamic_day_D",
+      "original_rank": 10002,
+      "paint_color": "2",
+      "option_flags": [true, false, true, false, false, false]
+    },
+    {
+      "ident": "URGENT_003",
+      "production_date": "dynamic_day_D",
+      "original_rank": 10003,
+      "paint_color": "4",
+      "option_flags": [false, true, false, false, false, true]
+    }
+  ],
+  "capacity_changes": [
+    {
+      "constraint_id": "HPRC1",
+      "start_position": 25,
+      "end_position": 55,
+      "numerator": 1,
+      "denominator": 8
+    }
+  ]
+}
+

@@ -1,0 +1,41 @@
+# 版本控制排除规则：防止缓存、虚拟环境、求解结果和商业许可文件入库。
+
+# Python缓存
+__pycache__/
+*.py[cod]
+
+# 虚拟环境
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# 测试缓存
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# 本地环境和许可证
+.env
+.env.*
+gurobi.lic
+
+# 个人简历和面试材料
+李倩茹_简历_运筹_260817.docx
+Renault排产项目_面试复习与调优计划.docx
+
+# 临时运行结果
+outputs/runs/
+
+# 系统文件
+Thumbs.db
+.DS_Store
+
+
+# 运行产生的求解结果
+outputs/
+
+# Python安装产生的包元数据
+src/*.egg-info/
