@@ -15,6 +15,7 @@ from renault_cs.exact.base import ExactSolveMetrics, ExactSolveStatus
 from renault_cs.exact.model_data import ExactModelData, build_exact_model_data
 from renault_cs.exact.vehicle_types import reconstruct_vehicle_ids, vehicle_to_type_index
 from renault_cs.evaluation.scoring import CHECKER_OBJECTIVE_SLOTS
+from renault_cs.algorithms.greedy import construct_greedy_sequence
 
 if TYPE_CHECKING:
     from renault_cs.application.ports import SolutionEvaluator
@@ -61,8 +62,9 @@ class GurobiExactSolver:
         try:
             self._configure_model(model, config)
             variables = self._build_model(gp, grb, model, instance, data)
+            mip_start_source = "disabled"
             if bool(config.algorithm_parameters.get("use_mip_start", True)):
-                self._set_seqrank_mip_start(instance, data, variables)
+                mip_start_source = self._set_best_mip_start(instance, data, variables)
             self._write_debug_artifacts(model, config)
             model.optimize()
 
@@ -97,6 +99,7 @@ class GurobiExactSolver:
                     "objective_mode": "checker_weighted",
                     "checker_score_base": self._score_base,
                     "mip_start": bool(config.algorithm_parameters.get("use_mip_start", True)),
+                    "mip_start_source": mip_start_source,
                 },
             )
             evaluation = self._evaluator.evaluate(instance, solution)
@@ -299,19 +302,39 @@ class GurobiExactSolver:
         )
         model.setObjective(weighted, sense=grb.MINIMIZE)
 
-    @staticmethod
-    def _set_seqrank_mip_start(
+    def _set_best_mip_start(
+        self,
         instance: ProblemInstance,
         data: ExactModelData,
         variables: _ModelVariables,
-    ) -> None:
+    ) -> str:
         mapping = vehicle_to_type_index(data.vehicle_types)
-        seqrank = sorted(
-            instance.planning_day_vehicles,
-            key=lambda vehicle: (vehicle.original_rank, vehicle.ident),
+        greedy_ids = construct_greedy_sequence(instance)
+        seqrank_ids = tuple(
+            vehicle.ident
+            for vehicle in sorted(
+                instance.planning_day_vehicles,
+                key=lambda vehicle: (vehicle.original_rank, vehicle.ident),
+            )
         )
-        for position, vehicle in enumerate(seqrank):
-            variables.x[mapping[vehicle.ident], position].Start = 1.0
+        evaluated = [
+            (
+                source,
+                ids,
+                self._evaluator.evaluate(
+                instance,
+                    SequenceSolution(instance.name, ids, f"{source}_mip_start"),
+                ),
+            )
+            for source, ids in (("greedy", greedy_ids), ("seqrank", seqrank_ids))
+        ]
+        source, selected_ids, _ = min(
+            (item for item in evaluated if item[2].is_feasible),
+            key=lambda item: item[2].objective_vector,
+        )
+        for position, vehicle_id in enumerate(selected_ids):
+            variables.x[mapping[vehicle_id], position].Start = 1.0
+        return source
 
     @staticmethod
     def _extract_type_sequence(

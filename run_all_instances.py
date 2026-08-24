@@ -15,10 +15,10 @@ DATASETS = {
     "Set X": PROJECT_ROOT.parent / "Instances_set_X" / "Instances_set_X",
 }
 CHECKER_PATH = PROJECT_ROOT.parent / "checkers" / "WINDOWS" / "exeCarSeq.exe"
-OUTPUT_DIR = PROJECT_ROOT / "outputs" / "all_instances_comparison"
+OUTPUT_DIR = PROJECT_ROOT / "outputs" / "all_instances_comparison_60s_final_v3"
 
-GUROBI_TIME_LIMIT_SEC = 10.0
-ALNS_TIME_LIMIT_SEC = 10.0
+GUROBI_TIME_LIMIT_SEC = 60.0
+ALNS_TIME_LIMIT_SEC = 60.0
 ALNS_SEED = 42
 GUROBI_MIP_GAP = 0.01
 GUROBI_THREADS = 0
@@ -28,8 +28,12 @@ ALNS_CANDIDATE_LIMIT = 30
 ALNS_MAX_DESTROY_COUNT = 8
 ALNS_REGRET_SAMPLE_SIZE = 6
 ALNS_LOCAL_SEARCH_TRIALS = 20
+ALNS_PAINT_SEARCH_TRIALS = 20
+ALNS_VFLS_TRIALS = 100
+ALNS_VFLS_INTERVAL = 10
 # 调试时可改为 1；正式全量运行保持 None。
 MAX_INSTANCES: int | None = None
+RESUME_EXISTING = True
 # =====================================================================
 
 
@@ -103,11 +107,19 @@ def main() -> None:
     ]
     if MAX_INSTANCES is not None:
         jobs = jobs[:MAX_INSTANCES]
-    rows: list[dict[str, object]] = []
+    rows = _load_existing_rows(csv_path) if RESUME_EXISTING else []
+    completed = {
+        (row.get("数据集", ""), row.get("实例名", ""))
+        for row in rows
+        if row.get("ALNS总分") and row.get("Gurobi状态")
+    }
     total_started = perf_counter()
 
     print(f"共发现 {len(jobs)} 个实例，结果将保存到：{csv_path}")
     for number, (dataset_name, instance_dir) in enumerate(jobs, start=1):
+        if (dataset_name, instance_dir.name) in completed:
+            print(f"\n[{number}/{len(jobs)}] {dataset_name} / {instance_dir.name}：已完成，跳过")
+            continue
         print(f"\n[{number}/{len(jobs)}] {dataset_name} / {instance_dir.name}")
         row: dict[str, object] = {
             "数据集": dataset_name,
@@ -167,6 +179,9 @@ def main() -> None:
                         "max_destroy_count": ALNS_MAX_DESTROY_COUNT,
                         "regret_sample_size": ALNS_REGRET_SAMPLE_SIZE,
                         "local_search_trials": ALNS_LOCAL_SEARCH_TRIALS,
+                        "paint_search_trials": ALNS_PAINT_SEARCH_TRIALS,
+                        "vfls_trials": ALNS_VFLS_TRIALS,
+                        "vfls_interval": ALNS_VFLS_INTERVAL,
                     },
                 ),
             )
@@ -233,6 +248,13 @@ def _save_csv(path: Path, rows: list[dict[str, object]]) -> None:
         writer = csv.DictWriter(file, fieldnames=COLUMNS, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
+
+
+def _load_existing_rows(path: Path) -> list[dict[str, object]]:
+    if not path.exists():
+        return []
+    with path.open("r", newline="", encoding="utf-8-sig") as file:
+        return list(csv.DictReader(file))
 
 
 if __name__ == "__main__":

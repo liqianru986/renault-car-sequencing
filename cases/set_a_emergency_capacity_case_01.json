@@ -1,0 +1,45 @@
+{
+  "name": "set_a_emergency_capacity_case_01",
+  "instance_path": "../../Instances_set_A/Instances/064_38_2_EP_RAF_ENP_ch2",
+  "current_position": 40,
+  "freeze_length": 20,
+  "time_limit_sec": 60,
+  "seed": 42,
+  "official_score_weight": 100,
+  "moved_vehicle_weight": 50000,
+  "position_shift_weight": 2000,
+  "max_moved_vehicles": 50,
+  "max_total_position_shift": 2000,
+  "emergency_orders": [
+    {
+      "ident": "SET_A_URGENT_001",
+      "production_date": "dynamic_day_D",
+      "original_rank": 10001,
+      "paint_color": "6",
+      "option_flags": [false, false, true, false, false, false]
+    },
+    {
+      "ident": "SET_A_URGENT_002",
+      "production_date": "dynamic_day_D",
+      "original_rank": 10002,
+      "paint_color": "9",
+      "option_flags": [false, false, true, false, true, false]
+    },
+    {
+      "ident": "SET_A_URGENT_003",
+      "production_date": "dynamic_day_D",
+      "original_rank": 10003,
+      "paint_color": "4",
+      "option_flags": [false, false, false, true, false, true]
+    }
+  ],
+  "capacity_changes": [
+    {
+      "constraint_id": "HPRC3",
+      "start_position": 80,
+      "end_position": 150,
+      "numerator": 1,
+      "denominator": 5
+    }
+  ]
+}

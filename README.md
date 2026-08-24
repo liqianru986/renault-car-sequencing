@@ -1,7 +1,8 @@
 # Renault Car Sequencing
 
-ROADEF 2005 Renault Car Sequencing 的可复现求解与评测工程。当前版本已打通
-Parser、聚合车辆类型的 Gurobi MILP、内部 Evaluator、官方格式 I/O 与 Windows Checker。
+ROADEF 2005 Renault Car Sequencing 的可复现求解与评测工程。项目覆盖目标感知 Greedy、
+聚合车辆类型的 Gurobi MILP、ALNS + 增量 VFLS、内部 Evaluator、官方格式 I/O、Windows
+Checker，以及紧急订单、临时降产和冻结窗口下的动态滚动重排。
 
 ## 第一次运行（推荐）
 
@@ -122,7 +123,8 @@ renault-cs solve `
   --checker "<checkers/WINDOWS/exeCarSeq.exe>"
 ```
 
-Exact 默认使用 SeqRank MIP Start，并返回 Incumbent、Best Bound、MIP Gap、节点数和运行时间。
+Exact 会在硬可行的 SeqRank 与 Greedy 中选择目标向量更优者作为 MIP Start，并返回
+Incumbent、Best Bound、MIP Gap、节点数和运行时间。
 使用 `--no-mip-start` 可关闭初始解，使用 `--quiet-solver` 可关闭 Gurobi 控制台日志。
 
 运行完整 ALNS（Destroy、Repair、模拟退火接受和自适应权重更新）：
@@ -138,15 +140,46 @@ Exact 默认使用 SeqRank MIP Start，并返回 Incumbent、Best Bound、MIP Ga
 ```
 
 当前 Destroy 包含 Random、Violation-focused 和 Same-color，Repair 包含 Greedy 与
-Regret-2。运行结果的 `solver_metadata` 会输出最终算子权重、使用次数、接受次数和贡献次数。
+Regret-2。局部强化实现增量 Swap、Forward/Backward Insert 与 Reflection；比例窗口、
+颜色切换和同色批次均局部更新。运行结果会输出算子权重、贡献次数和 anytime 收敛轨迹。
 
 ## 动态滚动重排案例
 
 直接运行根目录的 `run_dynamic_case.py`。它会读取
-`cases/emergency_capacity_case_01.json`，加入紧急订单，固定已执行区与冻结窗口，并在指定
+`cases/set_a_emergency_capacity_case_01.json`，加入紧急订单，固定已执行区与冻结窗口，并在指定
 位置区间把选装工位的 N/P 负荷要求临时收紧后滚动重排剩余序列。输出包括动态产能违法、
 原赛题目标口径、移动订单数和位置偏移。新增车辆与动态约束不属于原始赛题，因此使用扩展
-Evaluator验证，不调用只认识原始实例的官方Checker。
+Evaluator验证，不调用只认识原始实例的官方Checker。动态 ALNS 与车辆级动态 Gurobi 使用
+同一组指标：临时产能违法、原赛题指标、移动车辆数、总/平均/最大位置偏移和冻结前缀有效性。
+
+```powershell
+.venv\Scripts\python.exe run_dynamic_case.py
+```
+
+## 60秒全量实验
+
+正式实验包含 Set A 16个与 Set X 19个，共35个官方实例。Gurobi 与 ALNS 均限制60秒，
+固定随机种子42，所有输出均通过官方 Checker。
+
+| 数据集 | 实例数 | ALNS胜 | Gurobi胜 | 同分 | ALNS相对SeqRank中位改善 | Gurobi相对SeqRank中位改善 |
+|---|---:|---:|---:|---:|---:|---:|
+| Set A | 16 | 16 | 0 | 0 | 21.26% | 1.65% |
+| Set X | 19 | 17 | 0 | 2 | 19.86% | 16.23% |
+| 合计 | 35 | 33 | 0 | 2 | — | — |
+
+Gurobi 状态为33个 `feasible`、2个 `optimal`，因此上述结果是同限时 Incumbent 比较，
+不是“ALNS优于数学规划最优解”的证明。运行与汇总：
+
+```powershell
+.venv\Scripts\python.exe run_all_instances.py
+.venv\Scripts\python.exe analyze_results.py
+```
+
+动态案例中，两种算法均将临时产能违法从1降为0并保持冻结前缀：动态ALNS移动33辆、
+总偏移622；动态Gurobi移动3辆、总偏移8。该案例是基于官方实例构造的模拟事件，不代表上线数据。
+
+详细流程、参数和面试问题见
+[`docs/项目全流程与面试复习_60秒实验.md`](docs/项目全流程与面试复习_60秒实验.md)。
 
 ## 已验证基准
 
@@ -159,7 +192,7 @@ Evaluator验证，不调用只认识原始实例的官方Checker。
 | LPRC | 978 | 978 |
 | Score | 863778 | 863778 |
 
-Set A 全部 16 个实例均可完成解析、SeqRank 求解和内部评估。
+Set A 与 Set X 共35个实例已完成 SeqRank、Gurobi、ALNS、解输出和官方 Checker 全流程。
 
 ## 依赖规则
 
@@ -168,13 +201,14 @@ Set A 全部 16 个实例均可完成解析、SeqRank 求解和内部评估。
 Exact 模型的集合、参数、变量、目标和约束见
 [`docs/milp_formulation.md`](docs/milp_formulation.md)。
 
-## 后续开发阶段
+## 已完成模块
 
-1. M0–M3：工程骨架、Parser、Evaluator、SeqRank、Writer、Checker（已完成）。
-2. M4：Greedy Baseline（待方案确认）。
-3. M5：增量评分、邻域与 VND/ILS。
-4. M6：冻结参数后运行 Set A/Set X 正式 Benchmark。
-5. M7：Gurobi 小规模精确验证（已完成首个实例）。
+1. 工程骨架、Parser、Evaluator、Writer 与官方 Checker；
+2. SeqRank Benchmark 与目标感知 Greedy；
+3. 聚合 MILP、可行最优 Warm Start 与独立解还原；
+4. ALNS、增量 VFLS、算子权重和收敛轨迹；
+5. Set A/Set X 35实例60秒正式 Benchmark；
+6. 紧急插单、临时降产、冻结窗口和计划偏移下的动态 ALNS/Gurobi。
 
 ## 测试
 

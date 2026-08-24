@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import json
 import sys
 from pathlib import Path
 
@@ -11,23 +12,25 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent
 EXPERIMENTS = (
     (
-        "medium_335",
-        PROJECT_ROOT.parent / "Instances_set_A" / "Instances" / "064_38_2_EP_RAF_ENP_ch2",
-    ),
-    (
-        "large_1260",
-        PROJECT_ROOT.parent / "Instances_set_A" / "Instances" / "024_38_3_EP_ENP_RAF",
+        "medium_485",
+        PROJECT_ROOT.parent / "Instances_set_A" / "Instances" / "022_3_4_EP_RAF_ENP",
     ),
 )
-TIME_LIMITS_SEC = (10.0, 30.0)
-MAX_ITERATIONS = (25, 50, 100)
-SEEDS = (42,)
+TIME_LIMITS_SEC = (60.0,)
+MAX_ITERATIONS = (10_000,)
+SEEDS = (41, 42, 43)
 
 DESTROY_FRACTION = 0.12
 MAX_DESTROY_COUNT = 8
 CANDIDATE_LIMIT = 30
 REGRET_SAMPLE_SIZE = 6
 LOCAL_SEARCH_TRIALS = 20
+PAINT_SEARCH_TRIALS = 20
+CHAIN_SEARCH_TRIALS = 0
+BLOCK_SEARCH_TRIALS = 0
+STRUCTURED_SEARCH_INTERVAL = 50
+VFLS_TRIALS = 100
+VFLS_INTERVAL = 10
 SEGMENT_LENGTH = 20
 REACTION = 0.20
 COOLING = 0.995
@@ -41,7 +44,9 @@ if str(SOURCE_ROOT) not in sys.path:
 from renault_cs.algorithms.alns import AlnsSolver
 from renault_cs.application.config import SolveConfig
 from renault_cs.evaluation.evaluator import RenaultEvaluator
+from renault_cs.infrastructure.checker_adapter import WindowsOfficialChecker
 from renault_cs.infrastructure.roadef_parser import RoadefParser
+from renault_cs.infrastructure.solution_io import RoadefSolutionWriter
 
 
 def main() -> None:
@@ -52,10 +57,16 @@ def main() -> None:
 
     output_dir = PROJECT_ROOT / "outputs" / "alns_tuning"
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / "tuning_results.csv"
+    output_path = output_dir / f"tuning_results_{int(TIME_LIMITS_SEC[0])}s.csv"
+    solution_dir = output_dir / f"solutions_{int(TIME_LIMITS_SEC[0])}s"
+    solution_dir.mkdir(exist_ok=True)
 
     parser = RoadefParser()
     evaluator = RenaultEvaluator()
+    writer = RoadefSolutionWriter()
+    checker = WindowsOfficialChecker(
+        PROJECT_ROOT.parent / "checkers" / "WINDOWS" / "exeCarSeq.exe"
+    )
     rows: list[dict[str, object]] = []
 
     for label, instance_path in EXPERIMENTS:
@@ -78,6 +89,12 @@ def main() -> None:
                                 "candidate_limit": CANDIDATE_LIMIT,
                                 "regret_sample_size": REGRET_SAMPLE_SIZE,
                                 "local_search_trials": LOCAL_SEARCH_TRIALS,
+                                "paint_search_trials": PAINT_SEARCH_TRIALS,
+                                "chain_search_trials": CHAIN_SEARCH_TRIALS,
+                                "block_search_trials": BLOCK_SEARCH_TRIALS,
+                                "structured_search_interval": STRUCTURED_SEARCH_INTERVAL,
+                                "vfls_trials": VFLS_TRIALS,
+                                "vfls_interval": VFLS_INTERVAL,
                                 "segment_length": SEGMENT_LENGTH,
                                 "reaction": REACTION,
                                 "cooling": COOLING,
@@ -86,6 +103,18 @@ def main() -> None:
                     )
                     metadata = result.solution.metadata
                     evaluation = result.evaluation
+                    solution_path = solution_dir / f"{instance.name}_seed{seed}.txt"
+                    writer.write(result.solution, solution_path)
+                    trace_path = solution_dir / f"{instance.name}_seed{seed}_trace.json"
+                    trace_path.write_text(
+                        json.dumps(
+                            metadata["convergence_trace"],
+                            ensure_ascii=False,
+                            indent=2,
+                        ),
+                        encoding="utf-8",
+                    )
+                    checker_report = checker.check(instance_path, solution_path)
                     row = {
                         "case": label,
                         "instance": instance.name,
@@ -103,13 +132,19 @@ def main() -> None:
                         "hprc": evaluation.hprc_violations,
                         "lprc": evaluation.lprc_violations,
                         "paint": evaluation.paint_changes,
+                        "checker_passed": (
+                            checker_report.is_valid
+                            and checker_report.score == evaluation.official_score
+                        ),
+                        "structured_improvements": metadata["chain_search_improvements"],
                     }
                     rows.append(row)
                     _save_csv(output_path, rows)
                     print(
                         f"  {time_limit:>4.0f}s / {iteration_limit:>3} iter | "
                         f"实际 {metadata['iterations']:>3} iter | "
-                        f"{metadata['initial_score']} -> {evaluation.official_score}"
+                        f"{metadata['initial_score']} -> {evaluation.official_score} | "
+                        f"checker={row['checker_passed']}"
                     )
 
     print(f"\n结果已保存：{output_path}")

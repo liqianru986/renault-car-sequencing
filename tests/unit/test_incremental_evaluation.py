@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import random
 
 from renault_cs.algorithms.alns import AlnsSolver
 from renault_cs.evaluation.evaluator import RenaultEvaluator
@@ -61,5 +62,59 @@ def test_incremental_insert_positions_match_full_evaluation() -> None:
         candidate = full.copy()
         candidate.insert(position, vehicle_id)
         full_score, full_feasible = solver._partial_score(instance, candidate)
+        assert incremental.score == full_score
+        assert incremental.paint_feasible == full_feasible
+
+
+def test_incremental_swap_insert_and_reflection_match_full_evaluation() -> None:
+    instance = RoadefParser().parse(INSTANCE_PATH)
+    solver = AlnsSolver(RenaultEvaluator())
+    base = [
+        vehicle.ident
+        for vehicle in sorted(
+            instance.planning_day_vehicles,
+            key=lambda vehicle: (vehicle.original_rank, vehicle.ident),
+        )
+    ]
+    state = IncrementalEvaluationState(instance, base)
+
+    moves = (
+        (state.swap, (2, 29)),
+        (state.insert, (5, 24)),
+        (state.insert, (27, 4)),
+        (state.reflect, (8, 31)),
+        (state.reflect, (0, 9)),
+    )
+    for move, arguments in moves:
+        move(*arguments)
+        incremental = state.score()
+        full_score, full_feasible = solver._partial_score(
+            instance, list(state.vehicle_ids)
+        )
+        assert incremental.score == full_score
+        assert incremental.paint_feasible == full_feasible
+
+
+def test_random_incremental_move_chain_matches_full_evaluation() -> None:
+    instance = RoadefParser().parse(INSTANCE_PATH)
+    solver = AlnsSolver(RenaultEvaluator())
+    rng = random.Random(2026)
+    base = [
+        vehicle.ident
+        for vehicle in sorted(
+            instance.planning_day_vehicles,
+            key=lambda vehicle: (vehicle.original_rank, vehicle.ident),
+        )
+    ]
+    state = IncrementalEvaluationState(instance, base)
+
+    for _ in range(200):
+        left, right = rng.sample(range(len(base)), 2)
+        move = rng.choice((state.swap, state.insert, state.reflect))
+        move(left, right)
+        incremental = state.score()
+        full_score, full_feasible = solver._partial_score(
+            instance, list(state.vehicle_ids)
+        )
         assert incremental.score == full_score
         assert incremental.paint_feasible == full_feasible
