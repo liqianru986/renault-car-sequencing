@@ -8,7 +8,7 @@ import statistics
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 STATIC_CSV = ROOT / "outputs" / "all_instances_comparison_60s_final_v3" / "all_instances_results.csv"
 DYNAMIC_JSON = (
     ROOT

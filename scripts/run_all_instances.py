@@ -9,7 +9,7 @@ from time import perf_counter
 
 
 # ======================== 只需要修改这里的参数 ========================
-PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATASETS = {
     "Set A": PROJECT_ROOT.parent / "Instances_set_A" / "Instances",
     "Set X": PROJECT_ROOT.parent / "Instances_set_X" / "Instances_set_X",

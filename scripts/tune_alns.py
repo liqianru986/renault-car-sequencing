@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 # ======================== 调优时只修改这里 ========================
-PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 EXPERIMENTS = (
     (
         "medium_485",

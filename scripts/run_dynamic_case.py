@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 # 只需修改这里即可切换案例与输出目录。
-PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CASE_FILE = PROJECT_ROOT / "cases" / "set_a_emergency_capacity_case_01.json"
 OUTPUT_DIR = PROJECT_ROOT / "outputs" / "dynamic_rescheduling"
 

@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 # ======================== 首轮Pilot参数 ========================
-PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 INSTANCE_NAMES = (
     "064_38_2_EP_RAF_ENP_ch2",  # 335辆
     "022_3_4_EP_RAF_ENP",       # 485辆

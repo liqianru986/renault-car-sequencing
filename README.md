@@ -66,6 +66,17 @@ src/renault_cs/
 └─ benchmark/          # 批量实验与汇总
 ```
 
+仓库根目录仅保留日常单实例入口 `main.py`，其余实验入口统一放在 `scripts/`：
+
+```text
+scripts/
+├─ run_all_instances.py  # Set A / Set X 全实例对比实验
+├─ run_dynamic_case.py   # 紧急插单与临时降产滚动重排
+├─ run_set_a_pilot.py    # Set A 代表实例快速验证
+├─ tune_alns.py          # ALNS 参数与随机种子实验
+└─ analyze_results.py    # 静态、动态实验结果汇总
+```
+
 领域层不依赖 Gurobi、文件格式或具体算法；所有求解器共享同一个独立 Evaluator。
 
 ## 3. 求解方法
@@ -123,8 +134,8 @@ ALNS 包含：
 - 胜负与相对改善均在同一实例内计算，不跨不同目标顺序直接比较绝对分数。
 
 ```powershell
-.venv\Scripts\python.exe run_all_instances.py
-.venv\Scripts\python.exe analyze_results.py
+.venv\Scripts\python.exe scripts\run_all_instances.py
+.venv\Scripts\python.exe scripts\analyze_results.py
 ```
 
 `outputs/` 默认不纳入 Git，实验产物可由脚本重新生成。
@@ -153,7 +164,7 @@ ALNS 包含：
 该结果来自公开实例上的模拟事件，不代表真实工厂部署。动态扩展改变了车辆集合和能力规则，因此使用扩展 Evaluator，而不调用原赛题 Checker。
 
 ```powershell
-.venv\Scripts\python.exe run_dynamic_case.py
+.venv\Scripts\python.exe scripts\run_dynamic_case.py
 ```
 
 场景配置：[set_a_emergency_capacity_case_01.json](cases/set_a_emergency_capacity_case_01.json)。
