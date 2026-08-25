@@ -1,4 +1,3 @@
-"""可直接运行的调试入口：完整展示 Instance → Gurobi → Output 流程。"""
 
 from __future__ import annotations
 

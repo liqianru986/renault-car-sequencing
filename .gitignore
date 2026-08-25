@@ -22,7 +22,7 @@ venv/
 .env.*
 gurobi.lic
 
-# 本地 Word 文档（简历、面试材料等）
+# 本地 Word 文档
 *.docx
 
 # 临时运行结果
