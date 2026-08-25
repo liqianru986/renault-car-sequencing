@@ -223,7 +223,6 @@ python -m pytest
 - [系统架构](docs/architecture.md)
 - [数据字典](docs/data_dictionary.md)
 - [评估规则](docs/evaluation_rules.md)
-- [全流程与面试复习](docs/项目全流程与面试复习_60秒实验.md)
 
 ## 10. 结果边界
 
